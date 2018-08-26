@@ -30,7 +30,7 @@ unsigned int GetNextDifficulty(const CBlockIndex* pindexLast, const Consensus::P
     const int64_t targetTime = params.nPowTargetSpacing;
     const int blocksBeforeDoubling = 20 * 60 / targetTime;  // Maximum doubling time of 20 minutes
     const double maxAdjust = pow(2.0, 1.0 / blocksBeforeDoubling);
-    double rateAdjust = targetTime / (lastBlockTime > 0 ? lastBlockTime : targetTime);
+    double rateAdjust = (double)targetTime / (lastBlockTime > 0 ? lastBlockTime : targetTime);
     if (rateAdjust > maxAdjust) {
         rateAdjust = maxAdjust;
     } else if (rateAdjust < 1  / maxAdjust) {
@@ -47,7 +47,7 @@ unsigned int GetNextDifficulty(const CBlockIndex* pindexLast, const Consensus::P
     }
     return bnNew.GetCompact();
 }
-
+ 
 unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const Consensus::Params& params) {
     const CBlockIndex *BlockLastSolved = pindexLast;
     const CBlockIndex *BlockReading = pindexLast;
