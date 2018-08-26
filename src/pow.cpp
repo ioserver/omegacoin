@@ -14,6 +14,40 @@
 
 #include <math.h>
 
+static const int HARD_FORK_BLOCK = 300000;
+
+unsigned int GetNextDifficulty(const CBlockIndex* pindexLast, const Consensus::Params& params) {
+    /* Next diffculty based on last difficulty and last block time and capped by Philip Wong*/
+    const arith_uint256 bnPowLimit = UintToArith256(params.powLimit);
+    const int64_t nPastBlocks = 24;
+
+    // make sure we have at least (nPastBlocks + 1) blocks, otherwise just return powLimit
+    if (!pindexLast || pindexLast->nHeight < nPastBlocks || pindexLast->pprev == 0) {
+        return bnPowLimit.GetCompact();
+    }
+    extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
+    const int64_t lastBlockTime = pindexLast->GetBlockTime() - (pindexLast->pprev)->GetBlockTime();
+    const int64_t targetTime = params.nPowTargetSpacing;
+    const int blocksBeforeDoubling = 20 * 60 / targetTime;  // Maximum doubling time of 20 minutes
+    const double maxAdjust = pow(2.0, 1.0 / blocksBeforeDoubling);
+    double rateAdjust = targetTime / (lastBlockTime > 0 ? lastBlockTime : targetTime);
+    if (rateAdjust > maxAdjust) {
+        rateAdjust = maxAdjust;
+    } else if (rateAdjust < 1  / maxAdjust) {
+        rateAdjust = 1 / maxAdjust;
+    }
+    arith_uint256 bnNew = arith_uint256().SetCompact(pindexLast->nBits);
+    // Retarget
+    bnNew *= rateAdjust * 1000;
+    bnNew /= 1000;
+    LogPrintf("Height(%d) difficulty(%8.3f) adjust(%0.3f) = target(%ld) / blocktime(%4ld)\n",
+        pindexLast->nHeight, GetDifficulty(pindexLast), rateAdjust, targetTime, lastBlockTime);
+    if (bnNew > bnPowLimit) {
+        bnNew = bnPowLimit;
+    }
+    return bnNew.GetCompact();
+}
+
 unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const Consensus::Params& params) {
     const CBlockIndex *BlockLastSolved = pindexLast;
     const CBlockIndex *BlockReading = pindexLast;
@@ -172,7 +206,10 @@ unsigned int GetNextWorkRequiredBTC(const CBlockIndex* pindexLast, const CBlockH
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     // Most recent algo first
-    if (pindexLast->nHeight + 1 >= params.nPowDGWHeight) {
+    if (pindexLast->nHeight + 1 >= HARD_FORK_BLOCK) {
+        return GetNextDifficulty(pindexLast, params);
+    }
+    else if (pindexLast->nHeight + 1 >= params.nPowDGWHeight) {
         return DarkGravityWave(pindexLast, params);
     }
     else if (pindexLast->nHeight + 1 >= params.nPowKGWHeight) {
