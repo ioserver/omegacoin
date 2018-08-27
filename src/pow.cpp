@@ -14,10 +14,11 @@
 
 #include <math.h>
 
-static const int HARD_FORK_BLOCK = 300000;
+static const int HARD_FORK_BLOCK = 1000000;
 
 unsigned int GetNextDifficulty(const CBlockIndex* pindexLast, const Consensus::Params& params) {
-    /* Next diffculty based on last difficulty and last block time and capped by Philip Wong*/
+    // Damped proportional control, block time is the controlled variable
+    // Difficulty is the control variable
     const arith_uint256 bnPowLimit = UintToArith256(params.powLimit);
     const int64_t nPastBlocks = 24;
 
@@ -25,7 +26,7 @@ unsigned int GetNextDifficulty(const CBlockIndex* pindexLast, const Consensus::P
     if (!pindexLast || pindexLast->nHeight < nPastBlocks || pindexLast->pprev == 0) {
         return bnPowLimit.GetCompact();
     }
-    extern double GetDifficulty(const CBlockIndex* blockindex = NULL);
+    extern double ConvertBitsToDouble(unsigned int nBits);
     const int64_t lastBlockTime = pindexLast->GetBlockTime() - (pindexLast->pprev)->GetBlockTime();
     const int64_t targetTime = params.nPowTargetSpacing;
     const int blocksBeforeDoubling = 20 * 60 / targetTime;  // Maximum doubling time of 20 minutes
@@ -37,14 +38,14 @@ unsigned int GetNextDifficulty(const CBlockIndex* pindexLast, const Consensus::P
         rateAdjust = 1 / maxAdjust;
     }
     arith_uint256 bnNew = arith_uint256().SetCompact(pindexLast->nBits);
-    // Retarget
-    bnNew *= rateAdjust * 1000;
-    bnNew /= 1000;
-    LogPrintf("Height(%d) difficulty(%8.3f) adjust(%0.3f) = target(%ld) / blocktime(%4ld)\n",
-        pindexLast->nHeight, GetDifficulty(pindexLast), rateAdjust, targetTime, lastBlockTime);
+    // meaning of / and * are reversed
+    bnNew /= rateAdjust * 1000;
+    bnNew *= 1000;
     if (bnNew > bnPowLimit) {
         bnNew = bnPowLimit;
     }
+    LogPrintf("Height(%d) difficulty(%8.3f) newdiff(%8.3f) adjust(%0.3f) = target(%ld) / blocktime(%4ld)\n",
+        pindexLast->nHeight, ConvertBitsToDouble(pindexLast->nBits), ConvertBitsToDouble(bnNew.GetCompact()), rateAdjust, targetTime, lastBlockTime);
     return bnNew.GetCompact();
 }
  
