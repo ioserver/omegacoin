@@ -1223,6 +1223,27 @@ double ConvertBitsToDouble(unsigned int nBits)
     return dDiff;
 }
 
+unsigned int ConvertDoubleToBits(double dVal) {
+	int nShift = 29;
+	double top = 0xffff;
+	int64_t man = 0xffffff;
+	while (dVal > 0) {
+		man = (top / dVal) + 0.5;
+		if (man & 0xffffffffff000000L) {
+			dVal *= 256.0;
+			++nShift;
+		} else {
+			if (man & 0xff0000) {
+				break;
+			}
+			top *= 256.0;
+			--nShift;
+		}
+	}
+	return (nShift << 24) | man;
+}
+
+
 /*
 NOTE:   unlike bitcoin we are using PREVIOUS block height here,
         might be a good idea to change this to use prev bits
@@ -3299,7 +3320,10 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     if (block.nVersion < 4 && IsSuperMajority(4, pindexPrev, consensusParams.nMajorityRejectBlockOutdated, consensusParams))
         return state.Invalid(error("%s : rejected nVersion=3 block", __func__),
                              REJECT_OBSOLETE, "bad-version");
-
+{
+    extern unsigned int GetNextDifficulty(const CBlockIndex* pindexPrev, const Consensus::Params& params);
+    GetNextDifficulty(pindexPrev, consensusParams);
+}
     return true;
 }
 
