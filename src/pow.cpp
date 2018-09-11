@@ -42,7 +42,7 @@ unsigned int GetNextDifficulty(const CBlockIndex* pindexLast, const Consensus::P
     if (bnNew > bnPowLimit) {
         bnNew = bnPowLimit;
     }
-    LogPrintf("Height(%d) difficulty(%8.3f) newdiff(%8.3f) adjust(%0.3f) = target(%ld) / blocktime(%4ld)\n",
+    LogPrint("mnpayments", "Height(%d) difficulty(%8.3f) newdiff(%8.3f) adjust(%0.3f) = target(%ld) / blocktime(%4ld)\n",
         pindexLast->nHeight, ConvertBitsToDouble(pindexLast->nBits), ConvertBitsToDouble(bnNew.GetCompact()), rateAdjust, targetTime, lastBlockTime);
     return bnNew.GetCompact();
 }

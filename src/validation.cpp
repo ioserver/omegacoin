@@ -1224,23 +1224,22 @@ double ConvertBitsToDouble(unsigned int nBits)
 }
 
 unsigned int ConvertDoubleToBits(double dVal) {
-	int nShift = 29;
-	double top = 0xffff;
-	int64_t man = 0xffffff;
-	while (dVal > 0) {
-		man = (top / dVal) + 0.5;
-		if (man & 0xffffffffff000000L) {
-			dVal *= 256.0;
-			++nShift;
-		} else {
-			if (man & 0xff0000) {
-				break;
-			}
-			top *= 256.0;
-			--nShift;
-		}
-	}
-	return (nShift << 24) | man;
+    int nShift = 29;
+    double top = 0xffff;
+    int64_t man = 0x7fffff;
+    while (dVal > 0) {
+        man = (top / dVal) + 0.5;
+        if (man & 0xffffffffff000000L) {
+            dVal *= 256.0;
+            ++nShift;
+        } else if (man & 0xff8000) {
+            break;
+        } else {
+            top *= 256.0;
+            --nShift;
+        }
+    }
+    return (nShift << 24) | man;
 }
 
 
